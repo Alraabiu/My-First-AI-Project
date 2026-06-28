@@ -7,12 +7,12 @@ const MAX_CHARACTERS = 1000;
 
 const VOICES = [
   {
-    id: 'fatima-female',
+    id: 'fatima',
     name: 'Fatima',
     detail: 'Female · warm, even cadence',
   },
   {
-    id: 'rabiu-male',
+    id: 'rabiu',
     name: 'Rabiu',
     detail: 'Male · grounded, steady tone',
   },

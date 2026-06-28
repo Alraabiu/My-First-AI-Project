@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 
 const ttsRouter = require('./routes/tts');
 const { cleanupOldAudio, AUDIO_DIR } = require('./services/azureTts');
@@ -10,34 +9,36 @@ const { cleanupOldAudio, AUDIO_DIR } = require('./services/azureTts');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Required when deploying behind Render's proxy
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Trust proxy (important for Render/Heroku/etc.)
 app.set('trust proxy', 1);
 
 // ----------------------------
 // CORS
 // ----------------------------
-
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
-  .map(origin => origin.trim())
+  .map(o => o.trim())
   .filter(Boolean);
 
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow requests without an Origin header
-      if (!origin) {
+      // Allow non-browser requests (Postman, server-to-server)
+      if (!origin) return callback(null, true);
+
+      // Dev mode: allow everything if no list provided
+      if (isDev && allowedOrigins.length === 0) {
         return callback(null, true);
       }
 
-      if (
-        allowedOrigins.length === 0 ||
-        allowedOrigins.includes(origin)
-      ) {
+      // Production rule
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(new Error(`Origin not allowed: ${origin}`));
+      return callback(null, false);
     },
     credentials: true,
   })
@@ -46,21 +47,16 @@ app.use(
 // ----------------------------
 // Middleware
 // ----------------------------
-
 app.use(express.json({ limit: '100kb' }));
 
-// Serve generated MP3 files
-app.use(
-  '/audio',
-  express.static(AUDIO_DIR, {
-    maxAge: '1h',
-  })
-);
+// Serve audio files (consider protecting this in future)
+app.use('/audio', express.static(AUDIO_DIR, {
+  maxAge: '1h',
+}));
 
 // ----------------------------
-// Health Check
+// Routes
 // ----------------------------
-
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -78,16 +74,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ----------------------------
-// API Routes
-// ----------------------------
-
 app.use('/api', ttsRouter);
 
 // ----------------------------
-// 404
+// 404 Handler
 // ----------------------------
-
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -96,11 +87,10 @@ app.use((req, res) => {
 });
 
 // ----------------------------
-// Global Error Handler
+// Error Handler
 // ----------------------------
-
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error('Server Error:', err);
 
   res.status(500).json({
     success: false,
@@ -111,8 +101,7 @@ app.use((err, req, res, next) => {
 // ----------------------------
 // Start Server
 // ----------------------------
-
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log('========================================');
   console.log(' Naija Voice Backend');
   console.log('========================================');
@@ -122,8 +111,25 @@ app.listen(PORT, () => {
   console.log('========================================');
 });
 
-// Clean old audio every 15 minutes
-setInterval(cleanupOldAudio, 15 * 60 * 1000);
+// ----------------------------
+// Graceful shutdown
+// ----------------------------
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down...');
+  server.close(() => process.exit(0));
+});
 
-// Run cleanup immediately on startup
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Shutting down...');
+  server.close(() => process.exit(0));
+});
+
+// ----------------------------
+// Cleanup job (disable if serverless)
+// ----------------------------
+if (!process.env.SERVERLESS) {
+  setInterval(cleanupOldAudio, 15 * 60 * 1000);
+}
+
+// Run once on startup
 cleanupOldAudio();
