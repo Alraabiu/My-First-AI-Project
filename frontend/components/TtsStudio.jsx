@@ -7,13 +7,13 @@ const MAX_CHARACTERS = 1000;
 
 const VOICES = [
   {
-    id: 'ezinne-female',
-    name: 'Ezinne',
+    id: 'fatima-female',
+    name: 'Fatima',
     detail: 'Female · warm, even cadence',
   },
   {
-    id: 'abeo-male',
-    name: 'Abeo',
+    id: 'rabiu-male',
+    name: 'Rabiu',
     detail: 'Male · grounded, steady tone',
   },
 ];
@@ -104,7 +104,7 @@ export default function TtsStudio() {
           </h1>
           <p className="mt-3 max-w-xl text-base text-ink/70 sm:text-lg">
             Type any text below and Naija Voice reads it back in an authentic
-            Nigerian English accent — Ezinne or Abeo, your pick.
+            Nigerian English accent — Fatima or Rabiu, your pick.
           </p>
         </header>
 
@@ -230,9 +230,8 @@ export default function TtsStudio() {
         )}
 
         <footer className="mt-12 text-center text-xs text-ink/40 sm:text-left">
-          Voices: en-NG-EzinneNeural &amp; en-NG-AbeoNeural via Azure Cognitive
-          Services Speech.
-        </footer>
+  Voices: Fatima (Female) &amp; Rabiu (Male) powered by Azure AI Speech.
+</footer>
       </div>
     </div>
   );

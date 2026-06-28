@@ -23,7 +23,7 @@ router.get('/voices', (req, res) => {
     voices: Object.entries(VOICES).map(([id, azureName]) => ({
       id,
       azureName,
-      label: id === 'ezinne-female' ? 'Ezinne (Female)' : 'Abeo (Male)',
+     label: id === 'fatima-female' ? 'Fatima (Female)' : 'Rabiu (Male)',
     })),
   });
 });
@@ -57,7 +57,7 @@ router.post('/tts', ttsLimiter, async (req, res) => {
 
     return res.json({
       audioUrl: buildAudioUrl(req, filename),
-      voice: voice || 'ezinne-female',
+      voice: voice || 'fatima-female',
     });
   } catch (err) {
     console.error('TTS generation failed:', err.response?.data?.toString?.() || err.message);

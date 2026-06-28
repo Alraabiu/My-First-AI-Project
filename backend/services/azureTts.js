@@ -1,93 +1,97 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { synthesizeSpeech, VOICES } = require('../services/azureTts');
 
-// The two genuine Nigerian-English neural voices Azure Speech offers.
-// (AWS Polly and Google Cloud TTS do not currently offer an en-NG locale,
-// which is why this project uses Azure Speech for synthesis.)
-const VOICES = {
-  'ezinne-female': 'en-NG-EzinneNeural',
-  'abeo-male': 'en-NG-AbeoNeural',
-};
+const router = express.Router();
 
-const AUDIO_DIR = path.join(__dirname, '..', 'public', 'audio');
+// Basic abuse protection — adjust to taste once you have real traffic patterns.
+const ttsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: {
+    error: 'Too many requests. Please wait a moment and try again.',
+  },
+});
 
-if (!fs.existsSync(AUDIO_DIR)) {
-  fs.mkdirSync(AUDIO_DIR, { recursive: true });
+const MAX_CHARACTERS = 1000;
+
+function buildAudioUrl(req, filename) {
+  const base =
+    process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+  return `${base.replace(/\/$/, '')}/audio/${filename}`;
 }
 
-function escapeForSsml(text) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-function buildSsml({ text, voiceId, rate, pitch }) {
-  const safeText = escapeForSsml(text);
-  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-NG">
-  <voice name="${voiceId}">
-    <prosody rate="${rate}" pitch="${pitch}">${safeText}</prosody>
-  </voice>
-</speak>`;
-}
-
-/**
- * Calls the Azure Speech REST endpoint and saves the resulting MP3 to disk.
- * Returns the generated filename (not the full URL — that's built by the route).
- */
-async function synthesizeSpeech({ text, voice = 'ezinne-female', rate = '1.0', pitch = '0%' }) {
-  const key = process.env.AZURE_SPEECH_KEY;
-  const region = process.env.AZURE_SPEECH_REGION;
-
-  if (!key || !region) {
-    throw new Error('Azure Speech credentials are not configured on the server.');
-  }
-
-  const voiceId = VOICES[voice] || VOICES['ezinne-female'];
-  const ssml = buildSsml({ text, voiceId, rate, pitch });
-
-  const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
-
-  const response = await axios.post(endpoint, ssml, {
-    headers: {
-      'Ocp-Apim-Subscription-Key': key,
-      'Content-Type': 'application/ssml+xml',
-      // 48kHz mp3 is a good balance of quality and file size
-      'X-Microsoft-OutputFormat': 'audio-48khz-192kbitrate-mono-mp3',
-      'User-Agent': 'naija-tts-app',
-    },
-    responseType: 'arraybuffer',
-    timeout: 20000,
+router.get('/voices', (req, res) => {
+  res.json({
+    voices: Object.entries(VOICES).map(([id, azureName]) => ({
+      id,
+      azureName,
+      label:
+        id === 'fatima-female'
+          ? 'Fatima (Female)'
+          : 'Rabiu (Male)',
+    })),
   });
+});
 
-  const filename = `${uuidv4()}.mp3`;
-  const filePath = path.join(AUDIO_DIR, filename);
-  fs.writeFileSync(filePath, response.data);
+router.post('/tts', ttsLimiter, async (req, res) => {
+  try {
+    const { text, voice, rate, pitch } = req.body || {};
 
-  return filename;
-}
-
-/** Deletes audio files older than AUDIO_TTL_MINUTES. Called on a timer from server.js. */
-function cleanupOldAudio() {
-  const ttlMs = (Number(process.env.AUDIO_TTL_MINUTES) || 60) * 60 * 1000;
-  const now = Date.now();
-
-  fs.readdir(AUDIO_DIR, (err, files) => {
-    if (err) return;
-    files.forEach((file) => {
-      const filePath = path.join(AUDIO_DIR, file);
-      fs.stat(filePath, (statErr, stats) => {
-        if (statErr) return;
-        if (now - stats.mtimeMs > ttlMs) {
-          fs.unlink(filePath, () => {});
-        }
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({
+        error: 'Field "text" is required.',
       });
-    });
-  });
-}
+    }
 
-module.exports = { synthesizeSpeech, cleanupOldAudio, VOICES, AUDIO_DIR };
+    if (text.length > MAX_CHARACTERS) {
+      return res.status(400).json({
+        error: `Text is too long. Max ${MAX_CHARACTERS} characters per request.`,
+      });
+    }
+
+    if (voice && !VOICES[voice]) {
+      return res.status(400).json({
+        error: `Unknown voice "${voice}". Valid options: ${Object.keys(
+          VOICES
+        ).join(', ')}`,
+      });
+    }
+
+    const filename = await synthesizeSpeech({
+      text: text.trim(),
+      voice,
+      rate: rate || '1.0',
+      pitch: pitch || '0%',
+    });
+
+    return res.json({
+      audioUrl: buildAudioUrl(req, filename),
+      voice: voice || 'fatima-female',
+    });
+  } catch (err) {
+    console.error(
+      'TTS generation failed:',
+      err.response?.data?.toString?.() || err.message
+    );
+
+    if (err.response?.status === 401) {
+      return res.status(500).json({
+        error: 'Azure Speech credentials are invalid.',
+      });
+    }
+
+    if (err.response?.status === 429) {
+      return res.status(503).json({
+        error: 'Azure Speech quota exceeded. Try again shortly.',
+      });
+    }
+
+    return res.status(500).json({
+      error: 'Failed to generate audio. Please try again.',
+    });
+  }
+});
+
+module.exports = router;
