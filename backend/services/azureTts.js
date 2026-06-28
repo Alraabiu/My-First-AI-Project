@@ -99,7 +99,8 @@ async function synthesizeSpeech({
       headers: {
         'Ocp-Apim-Subscription-Key': key,
         'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-48khz-192kbitrate-mono-mp3',
+        'X-Microsoft-OutputFormat':
+          'audio-48khz-192kbitrate-mono-mp3',
         'User-Agent': 'Naija Voice',
       },
     }
