@@ -37,9 +37,8 @@ function WaveformBars({ active }) {
 }
 
 export default function TtsStudio() {
-  const [text, setText] = useState(
-    "Good morning o! Welcome to Naija Voice — type anything and let's hear how it sounds."
-  );
+ const [text, setText] = useState('');
+
   const [voice, setVoice] = useState(VOICES[0].id);
   const [rate, setRate] = useState(1.0);
   const [status, setStatus] = useState('idle'); // idle | loading | error | ready
