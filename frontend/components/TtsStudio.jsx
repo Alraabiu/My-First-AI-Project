@@ -219,19 +219,26 @@ export default function TtsStudio() {
               <audio
                 ref={audioRef}
                 src={audioUrl}
+                controls
+                className="mt-4 w-full"
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onEnded={() => setIsPlaying(false)}
-                className="mt-3 w-full"
-                controls
               />
+              <a
+                href={audioUrl}
+                download={`NaijaVoice-${Date.now()}.mp3`}
+                className="mt-5 inline-flex items-center rounded-xl bg-gold px-5 py-3 font-semibold text-palm transition hover:scale-105"
+              >
+                ⬇ Download MP3
+              </a>
             </div>
           </div>
         )}
 
         <footer className="mt-12 text-center text-xs text-ink/40 sm:text-left">
-  Voices: Fatima (Female) &amp; Rabiu (Male) powered by Azure AI Speech.
-</footer>
+          Voices: Fatima (Female) &amp; Rabiu (Male) powered by Azure AI Speech.
+        </footer>
       </div>
     </div>
   );
