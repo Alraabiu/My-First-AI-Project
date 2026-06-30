@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 const MAX_CHARACTERS = 1000;
 
 const VOICES = [
@@ -98,7 +99,7 @@ export default function TtsStudio() {
           <p className="font-body text-sm uppercase tracking-[0.2em] text-rust">
             Naija Voice
           </p>
-          <h1 className="mt-2 font-display text-4xl font-semibold text-ink sm:text-5xl">
+          <h1 className="mt-8 w-full rounded-xl bg-palm px-6 py-4 font-display text-lg font-semibold text-sand transition-colors hover:bg-palmDeep hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">
             Hear your words, spoken like home.
           </h1>
           <p className="mt-3 max-w-xl text-base text-ink/70 sm:text-lg">
@@ -120,7 +121,7 @@ export default function TtsStudio() {
             onChange={(e) => setText(e.target.value.slice(0, MAX_CHARACTERS))}
             rows={6}
             placeholder="Type or paste what you want spoken aloud..."
-            className="w-full resize-none rounded-xl border border-sandDeep bg-sand/60 p-4 font-body text-base text-ink placeholder:text-ink/40 focus:border-palm focus:bg-white focus:outline-none"
+           className="w-full resize-none rounded-xl border border-sandDeep bg-sand/60 p-4 font-body text-base text-ink placeholder:text-ink/40 focus:border-palm focus:bg-white focus:ring-2 focus:ring-palm/30 focus:outline-none transition"
           />
           <div className="mt-1 flex justify-end text-xs text-ink/50">
             {charsLeft} characters left
@@ -177,14 +178,19 @@ export default function TtsStudio() {
               className="w-full accent-rust"
             />
           </div>
-
-          <button
-            type="submit"
-            disabled={status === 'loading' || !text.trim()}
-            className="mt-8 w-full rounded-xl bg-palm px-6 py-4 font-display text-lg font-semibold text-sand transition-colors hover:bg-palmDeep disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-          >
-            {status === 'loading' ? 'Generating…' : 'Generate speech'}
-          </button>
+<button
+  type="submit"
+  disabled={status === 'loading' || !text.trim()}
+  className="mt-8 w-full rounded-xl bg-palm px-6 py-4 font-display text-lg font-semibold text-sand transition-colors hover:bg-palmDeep disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+>
+  {status === 'loading' ? (
+    <>
+      <span className="animate-pulse">Generating...</span>
+    </>
+  ) : (
+    'Generate speech'
+  )}
+</button>
 
           {status === 'error' && (
             <p role="alert" className="mt-4 text-sm font-medium text-rust">
@@ -194,7 +200,7 @@ export default function TtsStudio() {
         </form>
 
         {audioUrl && (
-          <div className="mt-8 flex items-center gap-5 rounded-2xl border border-sandDeep bg-palm p-5 text-sand sm:p-6">
+          <div className="mt-8 rounded-2xl border border-sandDeep bg-palm p-6 text-sand shadow-xl">
             <button
               type="button"
               onClick={togglePlayback}
@@ -219,7 +225,7 @@ export default function TtsStudio() {
                 ref={audioRef}
                 src={audioUrl}
                 controls
-                className="mt-4 w-full"
+                className="mt-4 w-full rounded-lg"
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onEnded={() => setIsPlaying(false)}
@@ -227,7 +233,7 @@ export default function TtsStudio() {
               <a
                 href={audioUrl}
                 download={`NaijaVoice-${Date.now()}.mp3`}
-                className="mt-5 inline-flex items-center rounded-xl bg-gold px-5 py-3 font-semibold text-palm transition hover:scale-105"
+               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-3 font-semibold text-palm shadow-lg transition duration-200 hover:scale-105 hover:shadow-xl"
               >
                 ⬇ Download MP3
               </a>
