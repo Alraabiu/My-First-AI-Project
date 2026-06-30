@@ -38,18 +38,18 @@ function WaveformBars({ active }) {
 }
 
 export default function TtsStudio() {
- const [text, setText] = useState('');
-
+  const [text, setText] = useState('');
   const [voice, setVoice] = useState(VOICES[0].id);
   const [rate, setRate] = useState(1.0);
-  const [status, setStatus] = useState('idle'); // idle | loading | error | ready
+  const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
   const audioRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const charsLeft = MAX_CHARACTERS - text.length;
-
   async function handleGenerate(e) {
     e.preventDefault();
     if (!text.trim()) return;
@@ -91,6 +91,26 @@ export default function TtsStudio() {
       audioRef.current.play();
     }
   }
+
+  function handleTxtUpload(event) {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  if (file.type !== 'text/plain') {
+    alert('Please upload a .txt file only.');
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    const content = e.target.result;
+    setText(content.slice(0, MAX_CHARACTERS));
+  };
+
+  reader.readAsText(file);
+}
 
   return (
     <div className="min-h-screen px-4 py-10 sm:px-8 lg:px-16">
@@ -161,8 +181,26 @@ export default function TtsStudio() {
           </fieldset>
 
           <div className="mt-6">
-            <div className="mb-2 flex items-center justify-between">
-              <label htmlFor="rate" className="font-display text-sm font-semibold text-ink">
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current.click()}
+                className="rounded-xl border border-palm px-5 py-3 font-semibold text-palm hover:bg-palm hover:text-white transition"
+              >
+                📄 Upload TXT File
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt"
+                onChange={handleTxtUpload}
+                className="hidden"
+              />
+            </div>
+
+            <div className="mt-6 flex items-center justify-between">
+              <label htmlFor="rate" className="text-sm font-medium text-ink">
                 Speaking rate
               </label>
               <span className="text-sm text-ink/60">{rate.toFixed(2)}x</span>
@@ -185,7 +223,7 @@ export default function TtsStudio() {
 >
   {status === 'loading' ? (
     <>
-      <span className="animate-pulse">Generating...</span>
+      <span className="animate-pulse"> Generating...</span>
     </>
   ) : (
     'Generate speech'
